@@ -15,7 +15,7 @@
      limitations under the License.
 -->
 <resources>
-  <string name="app_name" translatable="false">ML Kit GenAI API Demo</string>
+  <string name="app_name" translatable="false">MLKit-GenAI</string>
   <string name="summarization_entry_title_kotlin" translatable="false">Summarization API (Kotlin)</string>
   <string name="summarization_entry_title_java" translatable="false">Summarization API (Java)</string>
   <string name="rewriting_entry_title_kotlin" translatable="false">Rewriting API (Kotlin)</string>
@@ -24,21 +24,48 @@
   <string name="proofreading_entry_title_java" translatable="false">Proofreading API (Java)</string>
   <string name="image_description_entry_title_kotlin" translatable="false">Image Description API (Kotlin)</string>
   <string name="image_description_entry_title_java" translatable="false">Image Description API (Java)</string>
+  <string name="open_prompt_entry_title_kotlin" translatable="false">Open Prompt API (Kotlin)</string>
+  <string name="open_prompt_entry_title_java" translatable="false">Open Prompt API (Java)</string>
   <string name="button_send" translatable="false">Send</string>
   <string name="button_select_image" translatable="false">Select Image</string>
   <string name="button_cancel" translatable="false">Cancel</string>
   <string name="generating" translatable="false">Generating...</string>
-  <string name="input_message_is_empty" translatable="false">Please enter an non empty message</string>
+  <string name="input_message_is_empty" translatable="false">Please enter a non empty message</string>
   <string name="debug_info" translatable="false">Latency: %d ms</string>
   <string name="debug_info_streaming" translatable="false">Latency: first token %d ms, total %d ms</string>
   <string name="base_model_name" translatable="false">Base model name: %s</string>
   <string name="streaming" translatable="false">Streaming</string>
+  <string name="streaming_api" translatable="false">Streaming API</string>
+  <string name="kotlin_flow" translatable="false">Kotlin Flow</string>
+  <string name="streaming_callback" translatable="false">Streaming Callback</string>
   <string name="batch_run" translatable="false">Batch Run</string>
   <string name="batch_run_start_message" translatable="false">Start processing...</string>
   <string name="empty" translatable="false"/>
   <string name="input_type_label" translatable="false">Input:</string>
   <string name="output_type_label" translatable="false">Output:</string>
   <string name="language_label" translatable="false">Language:</string>
+  <string name="button_change_config" translatable="false">Change config</string>
+  <string name="hint_temperature" translatable="false">Temperature</string>
+  <string name="hint_top_k" translatable="false">TopK</string>
+  <string name="hint_seed" translatable="false">Seed</string>
+  <string name="hint_max_output_tokens" translatable="false">MaxOutputTokens</string>
+  <string name="hint_candidate_count" translatable="false">CandidateCount</string>
+  <string name="pref_key_temperature" translatable="false">pk_temp</string>
+  <string name="pref_key_top_k" translatable="false">pk_topk</string>
+  <string name="pref_key_max_output_tokens" translatable="false">pk_mot</string>
+  <string name="pref_key_seed" translatable="false">pk_seed</string>
+  <string name="pref_key_candidate_count" translatable="false">pk_cc</string>
+  <string name="pref_key_use_default_config" translatable="false">pk_udc</string>
+  <string name="action_simple_api" translatable="false">Use Simple Utility API</string>
+  <string name="selected_image_preview_for_prompt" translatable="false">Selected Image Preview for Prompt</string>
+  <string name="button_add_image" translatable="false">Add Image to Prompt</string>
+  <string name="button_save" translatable="false">Save</string>
+  <string name="button_add_image_to_prompt" translatable="false">Add Image to Prompt</string>
+  <string name="selected_image_thumbnail_preview" translatable="false">Selected Image Thumbnail Preview</string>
+  <string name="hint_type_a_message" translatable="false">Ask Open Prompt API</string>
+  <string name="hint_add_prompt_prefix" translatable="false">Optional: enter prompt prefix for lower latency</string>
+  <string name="warning_prefix_used_with_image" translatable="false">Prompt Prefix cannot be used with image input.</string>
+  <string name="message_format_prefix_and_suffix" translatable="false">Prefix:\n%1$s\n\nSuffix:\n%2$s</string>
   <string-array name="summarization_input_types" translatable="false">
     <item>Article</item>
     <item>Conversation</item>

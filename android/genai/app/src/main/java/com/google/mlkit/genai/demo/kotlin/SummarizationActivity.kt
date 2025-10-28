@@ -24,6 +24,7 @@ import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.common.StreamingCallback
 import com.google.mlkit.genai.demo.ContentItem
 import com.google.mlkit.genai.demo.R
+import com.google.mlkit.genai.prompt.CountTokensResponse
 import com.google.mlkit.genai.summarization.Summarization
 import com.google.mlkit.genai.summarization.SummarizationRequest
 import com.google.mlkit.genai.summarization.SummarizationResult
@@ -138,5 +139,13 @@ class SummarizationActivity : TextInputBaseActivity() {
         .build()
     summarizer = Summarization.getClient(options)
     resetProcessor()
+  }
+
+  override suspend fun countTokens(request: ContentItem.TextItem): CountTokensResponse {
+    throw UnsupportedOperationException("Not supported")
+  }
+
+  override suspend fun getTokenLimit(): Int {
+    throw UnsupportedOperationException("Not supported")
   }
 }

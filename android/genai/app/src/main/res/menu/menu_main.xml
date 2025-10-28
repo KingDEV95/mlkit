@@ -23,7 +23,30 @@
       android:checked="true"
       app:showAsAction="never" />
   <item
+      android:id="@+id/action_streaming_api_submenu"
+      android:title="@string/streaming_api"
+      app:showAsAction="never">
+      <menu>
+          <group android:checkableBehavior="single">
+              <item
+                  android:id="@+id/action_streaming_flow"
+                  android:title="@string/kotlin_flow"
+                  android:checked="true" />
+              <item
+                  android:id="@+id/action_streaming_callback"
+                  android:title="@string/streaming_callback" />
+          </group>
+      </menu>
+  </item>
+  <item
       android:id="@+id/action_batch_run"
       android:title="@string/batch_run"
+      app:showAsAction="never" />
+  <item
+      android:id="@+id/action_simple_api"
+      android:title="@string/action_simple_api"
+      android:checkable="true"
+      android:checked="false"
+      android:visible="false"
       app:showAsAction="never" />
 </menu>

@@ -24,6 +24,7 @@ import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.common.StreamingCallback
 import com.google.mlkit.genai.demo.ContentItem
 import com.google.mlkit.genai.demo.R
+import com.google.mlkit.genai.prompt.CountTokensResponse
 import com.google.mlkit.genai.rewriting.Rewriter
 import com.google.mlkit.genai.rewriting.RewriterOptions
 import com.google.mlkit.genai.rewriting.RewriterOptions.Language
@@ -133,5 +134,13 @@ class RewritingActivity : TextInputBaseActivity() {
       RewriterOptions.builder(this).setOutputType(outputType).setLanguage(language).build()
     rewriter = Rewriting.getClient(options)
     resetProcessor()
+  }
+
+  override suspend fun countTokens(request: ContentItem.TextItem): CountTokensResponse {
+    throw UnsupportedOperationException("Not supported")
+  }
+
+  override suspend fun getTokenLimit(): Int {
+    throw UnsupportedOperationException("Not supported")
   }
 }

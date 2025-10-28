@@ -49,6 +49,7 @@ import com.google.mlkit.genai.demo.ContentAdapter;
 import com.google.mlkit.genai.demo.ContentItem;
 import com.google.mlkit.genai.demo.ContentItem.TextItem;
 import com.google.mlkit.genai.demo.R;
+import com.google.mlkit.genai.prompt.CountTokensResponse;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import java.io.IOException;
@@ -63,6 +64,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
@@ -164,6 +166,21 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
   }
 
   @Override
+  public boolean onPrepareOptionsMenu(Menu menu) {
+    super.onPrepareOptionsMenu(menu);
+    MenuItem streamingItem = menu.findItem(R.id.action_streaming);
+    if (streamingItem != null) {
+      streamingItem.setChecked(streaming);
+    }
+    // Disable the streaming API submenu in Java activities as it's only for Kotlin Flow.
+    MenuItem streamingApiSubmenu = menu.findItem(R.id.action_streaming_api_submenu);
+    if (streamingApiSubmenu != null) {
+      streamingApiSubmenu.setVisible(false);
+    }
+    return true;
+  }
+
+  @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     if (item.getItemId() == R.id.action_streaming) {
       streaming = !streaming;
@@ -196,7 +213,7 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
           @Override
           public void onFailure(@NonNull Throwable t) {
             Log.e(TAG, "Failed to check status.", t);
-            displayErrorMessage("Failed to check status: " + t);
+            displayErrorMessage("Failed to check status", t);
           }
         },
         ContextCompat.getMainExecutor(this));
@@ -218,7 +235,7 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
 
               @Override
               public void onDownloadFailed(@NonNull GenAiException e) {
-                displayErrorMessage("Failed to download model: " + e);
+                displayErrorMessage("Failed to download model", e);
               }
 
               @Override
@@ -248,7 +265,7 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
           @Override
           public void onFailure(@NonNull Throwable t) {
             Log.e(TAG, "Failed to download feature.", t);
-            displayErrorMessage("Failed to download feature: " + t);
+            displayErrorMessage("Failed to download feature", t);
           }
         },
         ContextCompat.getMainExecutor(this));
@@ -257,6 +274,70 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
   protected abstract ListenableFuture<Void> downloadFeature(DownloadCallback callback);
 
   private void runInference(RequestT request) {
+    ListenableFuture<CountTokensResponse> countTokensFuture = countTokens(request);
+    ListenableFuture<Integer> tokenLimitFuture = getTokenLimit();
+
+    ListenableFuture<List<Object>> combinedFuture =
+        Futures.successfulAsList(countTokensFuture, tokenLimitFuture);
+
+    Futures.addCallback(
+        combinedFuture,
+        new FutureCallback<List<Object>>() {
+          @Override
+          public void onSuccess(List<Object> results) {
+            StringBuilder tokenInfoTextBuilder = new StringBuilder();
+
+            try {
+              CountTokensResponse countTokensResponse = Futures.getDone(countTokensFuture);
+              tokenInfoTextBuilder
+                  .append("Input Token count: ")
+                  .append(countTokensResponse.getTotalTokens());
+            } catch (ExecutionException e) {
+              if (!(e.getCause() instanceof UnsupportedOperationException)) {
+                tokenInfoTextBuilder.append("Token count failed");
+                Log.e(TAG, "Failed to get token count.", e.getCause());
+              }
+            } catch (RuntimeException e) {
+              tokenInfoTextBuilder.append("Token count failed");
+              Log.e(TAG, "Failed to get token count.", e);
+            }
+
+            try {
+              Integer tokenLimit = Futures.getDone(tokenLimitFuture);
+              if (tokenInfoTextBuilder.length() > 0) {
+                tokenInfoTextBuilder.append(". ");
+              }
+              tokenInfoTextBuilder.append("Token limit: ").append(tokenLimit);
+            } catch (ExecutionException e) {
+              if (!(e.getCause() instanceof UnsupportedOperationException)) {
+                if (tokenInfoTextBuilder.length() > 0) {
+                  tokenInfoTextBuilder.append(". ");
+                }
+                tokenInfoTextBuilder.append("Token limit failed");
+                Log.e(TAG, "Failed to get token limit.", e.getCause());
+              }
+            } catch (RuntimeException e) {
+              if (tokenInfoTextBuilder.length() > 0) {
+                tokenInfoTextBuilder.append(". ");
+              }
+              tokenInfoTextBuilder.append("Token limit failed");
+              Log.e(TAG, "Failed to get token limit.", e);
+            }
+
+            String tokenInfoText = tokenInfoTextBuilder.toString();
+            runInferenceWithTokenInfo(request, tokenInfoText);
+          }
+
+          @Override
+          public void onFailure(@NonNull Throwable t) {
+            Log.e(TAG, "Unexpected failure in combined future.", t);
+            runInferenceWithTokenInfo(request, "Token info failed unexpectedly.");
+          }
+        },
+        ContextCompat.getMainExecutor(BaseActivity.this));
+  }
+
+  private void runInferenceWithTokenInfo(RequestT request, String tokenInfoText) {
     long startMs = System.currentTimeMillis();
     if (streaming) {
       hasFirstStreamingResult = false;
@@ -280,11 +361,16 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
           new FutureCallback<>() {
             @Override
             public void onSuccess(List<String> results) {
-              results.forEach(
-                  result -> contentAdapter.addContent(TextItem.Companion.fromResponse(result)));
               long totalLatency = Instant.now().minusMillis(startMs).toEpochMilli();
               String debugInfo =
                   getString(R.string.debug_info_streaming, firstTokenLatency, totalLatency);
+              String latencyMetadata =
+                  tokenInfoText.isEmpty() ? debugInfo : tokenInfoText + "\n" + debugInfo;
+              results.forEach(
+                  result -> {
+                    contentAdapter.addContent(
+                        TextItem.Companion.fromResponse(result, latencyMetadata));
+                  });
               endGeneratingUi(debugInfo);
             }
 
@@ -292,7 +378,7 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
             public void onFailure(@NonNull Throwable t) {
               Log.d(TAG, "Streaming result so far:\n" + resultBuilder);
               Log.e(TAG, "Failed to run inference.", t);
-              displayErrorMessage("Failed to run inference: " + t);
+              displayErrorMessage("Failed to run inference", t);
             }
           },
           ContextCompat.getMainExecutor(this));
@@ -303,17 +389,22 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
           new FutureCallback<>() {
             @Override
             public void onSuccess(List<String> results) {
-              results.forEach(
-                  result -> contentAdapter.addContent(TextItem.Companion.fromResponse(result)));
               String debugInfo =
                   getString(R.string.debug_info, Instant.now().minusMillis(startMs).toEpochMilli());
+              String latencyMetadata =
+                  tokenInfoText.isEmpty() ? debugInfo : tokenInfoText + "\n" + debugInfo;
+              results.forEach(
+                  result -> {
+                    contentAdapter.addContent(
+                        TextItem.Companion.fromResponse(result, latencyMetadata));
+                  });
               endGeneratingUi(debugInfo);
             }
 
             @Override
             public void onFailure(@NonNull Throwable t) {
               Log.e(TAG, "Failed to run inference.", t);
-              displayErrorMessage("Failed to run inference: " + t);
+              displayErrorMessage("Failed to run inference", t);
             }
           },
           ContextCompat.getMainExecutor(this));
@@ -322,6 +413,14 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
 
   protected abstract ListenableFuture<List<String>> runInferenceImpl(
       RequestT request, @Nullable StreamingCallback streamingCallback);
+
+  protected ListenableFuture<CountTokensResponse> countTokens(RequestT request) {
+    return Futures.immediateFailedFuture(new UnsupportedOperationException());
+  }
+
+  protected ListenableFuture<Integer> getTokenLimit() {
+    return Futures.immediateFailedFuture(new UnsupportedOperationException());
+  }
 
   protected void setupSpinner(int spinnerId, int arrayId, Consumer<Integer> onItemSelected) {
     Spinner spinner = findViewById(spinnerId);
@@ -342,6 +441,16 @@ abstract class BaseActivity<RequestT extends ContentItem> extends AppCompatActiv
   }
 
   private void displayErrorMessage(String errorMessage) {
+    displayErrorMessage(errorMessage, /* cause= */ null);
+  }
+
+  private void displayErrorMessage(String errorMessage, @Nullable Throwable cause) {
+    if (cause != null) {
+      errorMessage += ": " + cause;
+      if (cause.getCause() != null) {
+        errorMessage += "\nCause: " + cause.getCause();
+      }
+    }
     contentAdapter.addContent(TextItem.Companion.fromErrorResponse(errorMessage));
     endGeneratingUi(getString(R.string.empty));
   }

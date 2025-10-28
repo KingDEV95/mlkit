@@ -17,6 +17,7 @@
 package com.google.mlkit.genai.demo.java;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static java.util.Objects.requireNonNull;
 
 import android.os.Bundle;
@@ -30,6 +31,7 @@ import com.google.mlkit.genai.common.FeatureStatus;
 import com.google.mlkit.genai.common.StreamingCallback;
 import com.google.mlkit.genai.demo.ContentItem.TextItem;
 import com.google.mlkit.genai.demo.R;
+import com.google.mlkit.genai.prompt.CountTokensResponse;
 import com.google.mlkit.genai.proofreading.Proofreader;
 import com.google.mlkit.genai.proofreading.ProofreaderOptions;
 import com.google.mlkit.genai.proofreading.ProofreaderOptions.InputType;
@@ -142,6 +144,16 @@ public class ProofreadingActivity extends TextInputBaseActivity {
         ProofreaderOptions.builder(this).setInputType(inputType).setLanguage(language).build();
     proofreader = Proofreading.getClient(options);
     resetProcessor();
+  }
+
+  @Override
+  protected ListenableFuture<CountTokensResponse> countTokens(TextItem request) {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
+  }
+
+  @Override
+  protected ListenableFuture<Integer> getTokenLimit() {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
   }
 
   @Override

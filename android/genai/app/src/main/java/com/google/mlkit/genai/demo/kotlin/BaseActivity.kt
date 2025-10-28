@@ -34,6 +34,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.GetContent
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -44,6 +45,7 @@ import com.google.mlkit.genai.common.StreamingCallback
 import com.google.mlkit.genai.demo.ContentAdapter
 import com.google.mlkit.genai.demo.ContentItem
 import com.google.mlkit.genai.demo.R
+import com.google.mlkit.genai.prompt.CountTokensResponse
 import com.opencsv.CSVReader
 import com.opencsv.CSVWriter
 import java.io.InputStreamReader
@@ -53,6 +55,8 @@ import java.time.Instant
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 /** Base Activity for ML Kit GenAI APIs. */
 abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
@@ -64,6 +68,7 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
   private var totalBytesToDownload = 0L
 
   private var streaming = true
+  private var useStreamingCallbackApi = false
   private var hasFirstStreamingResult = false
   private var firstTokenLatency = 0L
 
@@ -134,6 +139,27 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
 
   override fun onCreateOptionsMenu(menu: Menu): Boolean {
     menuInflater.inflate(R.menu.menu_main, menu)
+    menu.findItem(R.id.action_streaming)?.isChecked = streaming
+    return true
+  }
+
+  /**
+   * This method is called right before the menu is shown. We use it to dynamically enable/disable
+   * the API submenu and set radio checks.
+   */
+  override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+    super.onPrepareOptionsMenu(menu)
+    val streamingItem = menu.findItem(R.id.action_streaming)
+    val streamingApiSubmenu = menu.findItem(R.id.action_streaming_api_submenu)
+
+    streamingApiSubmenu?.isEnabled = streaming
+    streamingItem?.isChecked = streaming
+
+    if (useStreamingCallbackApi) {
+      menu.findItem(R.id.action_streaming_callback)?.isChecked = true
+    } else {
+      menu.findItem(R.id.action_streaming_flow)?.isChecked = true
+    }
     return true
   }
 
@@ -142,6 +168,17 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
       R.id.action_streaming -> {
         streaming = !streaming
         item.isChecked = streaming
+        invalidateOptionsMenu()
+        true
+      }
+      R.id.action_streaming_flow -> {
+        useStreamingCallbackApi = false
+        item.isChecked = true
+        true
+      }
+      R.id.action_streaming_callback -> {
+        useStreamingCallbackApi = true
+        item.isChecked = true
         true
       }
       R.id.action_batch_run -> {
@@ -169,7 +206,7 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
 
         override fun onFailure(t: Throwable) {
           Log.e(TAG, "Failed to check status.", t)
-          displayErrorMessage("Failed to check status: $t")
+          displayErrorMessage("Failed to check status", t)
         }
       },
       ContextCompat.getMainExecutor(this),
@@ -187,7 +224,7 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
           }
 
           override fun onDownloadFailed(e: GenAiException) {
-            displayErrorMessage("Failed to download model: $e")
+            displayErrorMessage("Failed to download model", e)
           }
 
           override fun onDownloadProgress(totalBytesDownloaded: Long) {
@@ -217,7 +254,7 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
 
         override fun onFailure(t: Throwable) {
           Log.e(TAG, "Failed to download feature.", t)
-          displayErrorMessage("Failed to download feature: $t")
+          displayErrorMessage("Failed to download feature", t)
         }
       },
       ContextCompat.getMainExecutor(this),
@@ -227,12 +264,41 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
   protected abstract fun downloadFeature(callback: DownloadCallback): ListenableFuture<Void>
 
   private fun runInference(request: RequestT) {
-    val startMs = System.currentTimeMillis()
-    if (streaming) {
-      hasFirstStreamingResult = false
-      val resultBuilder = StringBuilder()
-      Futures.addCallback(
-        runInferenceImpl(request) { additionalText ->
+    lifecycleScope.launch {
+      val startMs = System.currentTimeMillis()
+      val tokenInfoTextBuilder = StringBuilder()
+
+      try {
+        val tokenInfo = countTokens(request)
+        tokenInfoTextBuilder.append("Input Token count: ${tokenInfo.totalTokens}")
+      } catch (e: UnsupportedOperationException) {} catch (e: Exception) {
+        Log.e(TAG, "Failed to get token count.", e)
+        tokenInfoTextBuilder.append("Token count failed")
+      }
+
+      try {
+        val tokenLimit = getTokenLimit()
+        if (tokenInfoTextBuilder.isNotEmpty()) {
+          tokenInfoTextBuilder.append(". ")
+        }
+        tokenInfoTextBuilder.append("Token limit: $tokenLimit")
+      } catch (e: UnsupportedOperationException) {
+        // Expected for APIs that don't support token counting.
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to get token limit.", e)
+        if (tokenInfoTextBuilder.isNotEmpty()) {
+          tokenInfoTextBuilder.append(". ")
+        }
+        tokenInfoTextBuilder.append("Token limit failed")
+      }
+
+      val tokenInfoText = tokenInfoTextBuilder.toString()
+
+      if (streaming) {
+        hasFirstStreamingResult = false
+        val resultBuilder = StringBuilder()
+
+        val onChunk: (String) -> Unit = { additionalText ->
           runOnUiThread {
             resultBuilder.append(additionalText)
             if (hasFirstStreamingResult) {
@@ -245,46 +311,74 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
               firstTokenLatency = Instant.now().minusMillis(startMs).toEpochMilli()
             }
           }
-        },
-        object : FutureCallback<List<String>> {
-          override fun onSuccess(results: List<String>) {
-            results.forEach { result ->
-              contentAdapter.addContent(ContentItem.TextItem.fromResponse(result))
+        }
+        val onSuccess: (List<String>) -> Unit = { results ->
+          val totalLatency: Long = Instant.now().minusMillis(startMs).toEpochMilli()
+          val debugInfo = getString(R.string.debug_info_streaming, firstTokenLatency, totalLatency)
+          val latencyMetadata =
+            if (tokenInfoText.isEmpty()) debugInfo else "$tokenInfoText\n$debugInfo"
+          results
+            .filter { it.isNotEmpty() }
+            .forEach { result ->
+              contentAdapter.addContent(ContentItem.TextItem.fromResponse(result, latencyMetadata))
             }
-            val totalLatency: Long = Instant.now().minusMillis(startMs).toEpochMilli()
-            val debugInfo =
-              getString(R.string.debug_info_streaming, firstTokenLatency, totalLatency)
-            endGeneratingUi(debugInfo)
-          }
+          endGeneratingUi(debugInfo)
+        }
+        val onFailure: (Throwable) -> Unit = { t ->
+          Log.d(TAG, "Streaming result so far:\n$resultBuilder")
+          Log.e(TAG, "Failed to run inference.", t)
+          displayErrorMessage("Failed to run inference", t)
+        }
 
-          override fun onFailure(t: Throwable) {
-            Log.d(TAG, "Streaming result so far:\n$resultBuilder")
-            Log.e(TAG, "Failed to run inference.", t)
-            displayErrorMessage("Failed to run inference: $t")
+        val streamFlow = if (useStreamingCallbackApi) null else runInferenceStreamImpl(request)
+
+        if (streamFlow != null) {
+          try {
+            streamFlow.collect { onChunk(it) }
+            onSuccess(listOf(resultBuilder.toString()))
+          } catch (t: Throwable) {
+            onFailure(t)
           }
-        },
-        ContextCompat.getMainExecutor(this),
-      )
-    } else {
-      Futures.addCallback(
-        runInferenceImpl(request, streamingCallback = null),
-        object : FutureCallback<List<String>> {
-          override fun onSuccess(results: List<String>) {
-            results.forEach { result ->
-              contentAdapter.addContent(ContentItem.TextItem.fromResponse(result))
+        } else {
+          Futures.addCallback(
+            runInferenceImpl(request) { additionalText -> onChunk(additionalText) },
+            object : FutureCallback<List<String>> {
+              override fun onSuccess(results: List<String>) {
+                onSuccess(results)
+              }
+
+              override fun onFailure(t: Throwable) {
+                onFailure(t)
+              }
+            },
+            ContextCompat.getMainExecutor(this@BaseActivity),
+          )
+        }
+      } else {
+        Futures.addCallback(
+          runInferenceImpl(request, streamingCallback = null),
+          object : FutureCallback<List<String>> {
+            override fun onSuccess(results: List<String>) {
+              val debugInfo =
+                getString(R.string.debug_info, Instant.now().minusMillis(startMs).toEpochMilli())
+              val latencyMetadata =
+                if (tokenInfoText.isEmpty()) debugInfo else "$tokenInfoText\n$debugInfo"
+              results.forEach { result ->
+                contentAdapter.addContent(
+                  ContentItem.TextItem.fromResponse(result, latencyMetadata)
+                )
+              }
+              endGeneratingUi(debugInfo)
             }
-            val debugInfo =
-              getString(R.string.debug_info, Instant.now().minusMillis(startMs).toEpochMilli())
-            endGeneratingUi(debugInfo)
-          }
 
-          override fun onFailure(t: Throwable) {
-            Log.e(TAG, "Failed to run inference.", t)
-            displayErrorMessage("Failed to run inference: $t")
-          }
-        },
-        ContextCompat.getMainExecutor(this),
-      )
+            override fun onFailure(t: Throwable) {
+              Log.e(TAG, "Failed to run inference.", t)
+              displayErrorMessage("Failed to run inference", t)
+            }
+          },
+          ContextCompat.getMainExecutor(this@BaseActivity),
+        )
+      }
     }
   }
 
@@ -292,6 +386,14 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
     request: RequestT,
     streamingCallback: StreamingCallback?,
   ): ListenableFuture<List<String>>
+
+  protected open fun runInferenceStreamImpl(request: RequestT): Flow<String>? = null
+
+  protected open suspend fun countTokens(request: RequestT): CountTokensResponse =
+    throw UnsupportedOperationException("Not implemented")
+
+  protected open suspend fun getTokenLimit(): Int =
+    throw UnsupportedOperationException("Not implemented")
 
   protected fun setupSpinner(spinnerId: Int, arrayId: Int, onItemSelected: (Int) -> Unit) {
     val spinner = findViewById<Spinner>(spinnerId)
@@ -312,7 +414,18 @@ abstract class BaseActivity<RequestT : ContentItem> : AppCompatActivity() {
   }
 
   private fun displayErrorMessage(errorMessage: String) {
-    contentAdapter.addContent(ContentItem.TextItem.fromErrorResponse(errorMessage))
+    displayErrorMessage(errorMessage, cause = null)
+  }
+
+  private fun displayErrorMessage(errorMessage: String, cause: Throwable?) {
+    var fullErrorMessage = errorMessage
+    if (cause != null) {
+      fullErrorMessage += ": $cause"
+      if (cause.cause != null) {
+        fullErrorMessage += "\nCause: ${cause.cause}"
+      }
+    }
+    contentAdapter.addContent(ContentItem.TextItem.fromErrorResponse(fullErrorMessage))
     endGeneratingUi(getString(R.string.empty))
   }
 

@@ -41,6 +41,7 @@ import com.google.mlkit.genai.imagedescription.ImageDescriber;
 import com.google.mlkit.genai.imagedescription.ImageDescriberOptions;
 import com.google.mlkit.genai.imagedescription.ImageDescription;
 import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest;
+import com.google.mlkit.genai.prompt.CountTokensResponse;
 import java.io.IOException;
 import java.util.List;
 
@@ -106,6 +107,16 @@ public class ImageDescriptionActivity extends BaseActivity<ImageItem> {
   @Override
   protected ListenableFuture<Void> downloadFeature(DownloadCallback callback) {
     return imageDescriber.downloadFeature(callback);
+  }
+
+  @Override
+  protected ListenableFuture<CountTokensResponse> countTokens(ImageItem request) {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
+  }
+
+  @Override
+  protected ListenableFuture<Integer> getTokenLimit() {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
   }
 
   @Override

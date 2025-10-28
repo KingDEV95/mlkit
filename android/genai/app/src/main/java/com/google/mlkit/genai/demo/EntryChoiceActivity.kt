@@ -25,7 +25,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import com.google.mlkit.genai.demo.java.OpenPromptActivity as OpenPromptActivityJava
 import com.google.mlkit.genai.demo.kotlin.ImageDescriptionActivity
+import com.google.mlkit.genai.demo.kotlin.OpenPromptActivity
 import com.google.mlkit.genai.demo.kotlin.ProofreadingActivity
 import com.google.mlkit.genai.demo.kotlin.RewritingActivity
 import com.google.mlkit.genai.demo.kotlin.SummarizationActivity
@@ -61,6 +63,8 @@ class EntryChoiceActivity : AppCompatActivity() {
           R.string.image_description_entry_title_java,
           com.google.mlkit.genai.demo.java.ImageDescriptionActivity::class.java,
         ),
+        ActivityItem(R.string.open_prompt_entry_title_kotlin, OpenPromptActivity::class.java),
+        ActivityItem(R.string.open_prompt_entry_title_java, OpenPromptActivityJava::class.java),
       )
 
     val recyclerView: RecyclerView = findViewById(R.id.entry_recycler_view)

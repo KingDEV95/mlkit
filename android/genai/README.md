@@ -14,6 +14,8 @@ This sample app demonstrates how to use the following GenAI APIs:
 
 - [Summarization](https://developers.google.com/ml-kit/genai/summarization/android) - Summarizes articles and chat conversations into 1-3 bullet points.
 
+- [Prompt](https://developers.google.com/ml-kit/genai/prompt/android) - Generates text content based on a custom text-only or multimodal prompt.
+
 ## Support
 
 * [Documentation](https://developers.google.com/ml-kit/genai)

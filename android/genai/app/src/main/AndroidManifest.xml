@@ -76,6 +76,16 @@
         android:label="@string/image_description_entry_title_java"
         android:screenOrientation="portrait" />
 
+    <activity
+        android:name="com.google.mlkit.genai.demo.kotlin.OpenPromptActivity"
+        android:label="@string/open_prompt_entry_title_kotlin"
+        android:screenOrientation="portrait" />
+
+    <activity
+        android:name="com.google.mlkit.genai.demo.java.OpenPromptActivity"
+        android:label="@string/open_prompt_entry_title_java"
+        android:screenOrientation="portrait" />
+
   </application>
 
 </manifest>

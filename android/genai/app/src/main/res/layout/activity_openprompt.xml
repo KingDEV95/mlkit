@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright 2025 The Android Open Source Project
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:keepScreenOn="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="4dp"
+    android:orientation="vertical">
+
+  <TextView
+      android:id="@+id/debug_info_text_view"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:padding="4dp"
+      android:visibility="gone" />
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:padding="4dp"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+
+    <Button
+      android:id="@+id/config_button"
+      style="?attr/materialButtonOutlinedStyle"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="8dp"
+      android:text="@string/button_change_config" />
+  </LinearLayout>
+
+  <androidx.recyclerview.widget.RecyclerView
+      android:id="@+id/content_recycler_view"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:clipToPadding="false"
+      android:paddingTop="8dp"/>
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="?android:attr/windowBackground"
+      android:gravity="center_vertical"
+      android:orientation="horizontal"
+      android:paddingStart="8dp"
+      android:paddingTop="8dp"
+      android:paddingEnd="8dp"
+      android:paddingBottom="8dp">
+
+    <EditText
+        android:id="@+id/prefix_edit_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="@drawable/edit_text_background_chat"
+        android:hint="@string/hint_add_prompt_prefix"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLines="5"
+        android:minHeight="48dp"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#CCCCCC"
+        tools:ignore="LabelFor" />
+  </LinearLayout>
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:gravity="center_vertical"
+      android:paddingTop="8dp"
+      android:paddingBottom="8dp"
+      android:paddingStart="8dp"
+      android:paddingEnd="8dp"
+      android:background="?android:attr/windowBackground">
+
+    <ImageButton
+        android:id="@+id/select_image_prompt_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_add_photo" android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/button_add_image_to_prompt"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:layout_marginEnd="8dp"/>
+
+    <ImageView
+        android:id="@+id/image_thumbnail_preview_input"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/selected_image_thumbnail_preview"/>
+
+    <EditText
+        android:id="@+id/request_edit_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:layout_weight="1"
+        android:hint="@string/hint_type_a_message"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLines="5"
+        android:background="@drawable/edit_text_background_chat"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#CCCCCC"
+        tools:ignore="LabelFor" />
+
+    <Button
+        android:id="@+id/send_button"
+        android:layout_width="wrap_content"
+        android:minWidth="48dp"
+        android:layout_height="48dp"
+        android:text="@string/button_send"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:layout_marginStart="8dp"/>
+  </LinearLayout>
+</LinearLayout>

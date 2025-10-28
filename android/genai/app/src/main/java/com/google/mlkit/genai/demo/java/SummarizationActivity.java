@@ -16,6 +16,7 @@
 
 package com.google.mlkit.genai.demo.java;
 
+import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static java.util.Objects.requireNonNull;
 
 import android.os.Bundle;
@@ -30,6 +31,7 @@ import com.google.mlkit.genai.common.FeatureStatus;
 import com.google.mlkit.genai.common.StreamingCallback;
 import com.google.mlkit.genai.demo.ContentItem.TextItem;
 import com.google.mlkit.genai.demo.R;
+import com.google.mlkit.genai.prompt.CountTokensResponse;
 import com.google.mlkit.genai.summarization.Summarization;
 import com.google.mlkit.genai.summarization.SummarizationRequest;
 import com.google.mlkit.genai.summarization.SummarizationResult;
@@ -99,6 +101,16 @@ public class SummarizationActivity extends TextInputBaseActivity {
             : summarizer.runInference(summarizationRequest),
         result -> ImmutableList.of(requireNonNull(result).getSummary()),
         ContextCompat.getMainExecutor(this));
+  }
+
+  @Override
+  protected ListenableFuture<CountTokensResponse> countTokens(TextItem request) {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
+  }
+
+  @Override
+  protected ListenableFuture<Integer> getTokenLimit() {
+    return immediateFailedFuture(new UnsupportedOperationException("Not supported"));
   }
 
   private void setUpInputAndOutputTypeSpinners() {

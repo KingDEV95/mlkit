@@ -36,6 +36,7 @@ import com.google.mlkit.genai.imagedescription.ImageDescriber
 import com.google.mlkit.genai.imagedescription.ImageDescriberOptions
 import com.google.mlkit.genai.imagedescription.ImageDescription
 import com.google.mlkit.genai.imagedescription.ImageDescriptionRequest
+import com.google.mlkit.genai.prompt.CountTokensResponse
 import java.io.IOException
 
 /** Demonstrates the Image Description API usage. */
@@ -132,5 +133,13 @@ class ImageDescriptionActivity : BaseActivity<ContentItem.ImageItem>() {
     val options = ImageDescriberOptions.builder(this).build()
     imageDescriber = ImageDescription.getClient(options)
     resetProcessor()
+  }
+
+  override suspend fun countTokens(request: ContentItem.ImageItem): CountTokensResponse {
+    throw UnsupportedOperationException("Not supported")
+  }
+
+  override suspend fun getTokenLimit(): Int {
+    throw UnsupportedOperationException("Not supported")
   }
 }
